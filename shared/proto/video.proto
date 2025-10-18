@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package video;
+
+option go_package = "shared/proto";
+
+service VideoService {
+  rpc SearchChannel(SearchChannelRequest) returns (SearchChannelResponse);
+  rpc GetChannelVideos(GetChannelVideosRequest)
+      returns (GetChannelVideosResponse);
+  rpc GetVideoDetails(GetVideoDetailsRequest) returns (GetVideoDetailsResponse);
+  rpc GetVideoTranscript(GetVideoTranscriptRequest)
+      returns (GetVideoTranscriptResponse);
+}
+
+message SearchChannelRequest {
+  string channel_name = 1;
+  string user_id = 2;
+}
+
+message SearchChannelResponse {
+  string channel_id = 1;
+  string channel_title = 2;
+  string channel_description = 3;
+  string thumbnail_url = 4;
+  repeated VideoInfo videos = 5;
+}
+
+message GetChannelVideosRequest {
+  string channel_id = 1;
+  string user_id = 2;
+  int32 max_results = 3;
+}
+
+message GetChannelVideosResponse { repeated VideoInfo videos = 1; }
+
+message GetVideoDetailsRequest {
+  string video_id = 1;
+  string user_id = 2;
+}
+
+message GetVideoDetailsResponse { VideoInfo video = 1; }
+
+message VideoInfo {
+  string video_id = 1;
+  string title = 2;
+  string description = 3;
+  string thumbnail_url = 4;
+  string published_at = 5;
+  string channel_id = 6;
+  string channel_title = 7;
+  int64 view_count = 8;
+  int64 like_count = 9;
+}
+
+message GetVideoTranscriptRequest {
+  string video_id = 1;
+  string user_id = 2;
+}
+
+message GetVideoTranscriptResponse {
+  string transcript = 1;
+  string video_id = 2;
+}

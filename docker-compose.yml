@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: text-tube-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: text_tube
+    networks:
+      - text-tube-network
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.auth
+    container_name: text-tube-auth
+    ports:
+      - "50051:50051"
+    environment:
+      - AUTH_SERVICE_PORT=50051
+      - MONGO_URI=mongodb://mongodb:27017
+      - JWT_SECRET=your-secret-key-change-in-production
+    depends_on:
+      - mongodb
+    networks:
+      - text-tube-network
+
+  video-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.video
+    container_name: text-tube-video
+    ports:
+      - "50052:50052"
+    environment:
+      - VIDEO_SERVICE_PORT=50052
+      - MONGO_URI=mongodb://mongodb:27017
+      - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+    depends_on:
+      - mongodb
+    networks:
+      - text-tube-network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: text-tube-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - GATEWAY_PORT=8080
+      - AUTH_SERVICE_ADDR=auth-service:50051
+      - VIDEO_SERVICE_ADDR=video-service:50052
+    depends_on:
+      - auth-service
+      - video-service
+    networks:
+      - text-tube-network
+
+volumes:
+  mongo-data:
+
+networks:
+  text-tube-network:
+    driver: bridge
