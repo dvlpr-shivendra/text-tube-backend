@@ -1,12 +1,12 @@
 package service
 
 import (
+	"authservice/internal/models"
+	"authservice/internal/repository"
 	"context"
 	"errors"
 	"time"
 
-	"authservice/internal/models"
-	"authservice/internal/repository"
 	pb "shared/proto"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -26,7 +26,7 @@ func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *Auth
 	}
 }
 
-func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.AuthSuccessResponse, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -42,13 +42,19 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, err
 	}
 
-	return &pb.RegisterResponse{
-		UserId:  user.ID,
-		Message: "User registered successfully",
+	token, err := s.generateToken(user.ID, user.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.AuthSuccessResponse{
+		Token:    token,
+		UserId:   user.ID,
+		Username: user.Username,
 	}, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.AuthSuccessResponse, error) {
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
@@ -63,7 +69,7 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 		return nil, err
 	}
 
-	return &pb.LoginResponse{
+	return &pb.AuthSuccessResponse{
 		Token:    token,
 		UserId:   user.ID,
 		Username: user.Username,

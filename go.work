@@ -1,8 +1,9 @@
 go 1.21
 
 use (
-	./gateway
 	./auth-service
-	./video-service
+	./gateway
 	./shared
+	./tests/e2e
+	./video-service
 )

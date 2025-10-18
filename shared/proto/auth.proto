@@ -5,8 +5,8 @@ package auth;
 option go_package = "shared/proto";
 
 service AuthService {
-  rpc Register(RegisterRequest) returns (RegisterResponse);
-  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Register(RegisterRequest) returns (AuthSuccessResponse);
+  rpc Login(LoginRequest) returns (AuthSuccessResponse);
   rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
 }
 
@@ -16,17 +16,12 @@ message RegisterRequest {
   string password = 3;
 }
 
-message RegisterResponse {
-  string user_id = 1;
-  string message = 2;
-}
-
 message LoginRequest {
   string email = 1;
   string password = 2;
 }
 
-message LoginResponse {
+message AuthSuccessResponse {
   string token = 1;
   string user_id = 2;
   string username = 3;

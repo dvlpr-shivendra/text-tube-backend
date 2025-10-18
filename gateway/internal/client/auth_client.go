@@ -26,11 +26,11 @@ func NewAuthClient(addr string) (*AuthClient, error) {
 	}, nil
 }
 
-func (c *AuthClient) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (c *AuthClient) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.AuthSuccessResponse, error) {
 	return c.client.Register(ctx, req)
 }
 
-func (c *AuthClient) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+func (c *AuthClient) Login(ctx context.Context, req *pb.LoginRequest) (*pb.AuthSuccessResponse, error) {
 	return c.client.Login(ctx, req)
 }
 

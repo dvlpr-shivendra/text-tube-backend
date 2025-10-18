@@ -2,9 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"gateway/internal/client"
 	"net/http"
 
-	"gateway/internal/client"
 	pb "shared/proto"
 )
 
@@ -44,16 +44,17 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
-
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"user_id": resp.UserId,
-		"message": resp.Message,
+		"token":    resp.Token,
+		"user_id":  resp.UserId,
+		"username": resp.Username,
 	})
 }
 
@@ -68,7 +69,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Email:    req.Email,
 		Password: req.Password,
 	})
-
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
