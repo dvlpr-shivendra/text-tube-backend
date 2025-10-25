@@ -61,8 +61,24 @@ func main() {
 	protected.HandleFunc("/videos/{videoId}", vh.GetVideoDetails).Methods("GET")
 	protected.HandleFunc("/videos/{videoId}/transcript", vh.GetVideoTranscript).Methods("GET") // NEW
 
+	// Wrap router with CORS middleware
+	handler := CORSMiddleware(r)
+
 	log.Printf("🚀 Gateway starting on port %s", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*") // allow any origin
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
