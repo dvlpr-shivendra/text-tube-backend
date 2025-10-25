@@ -13,6 +13,7 @@ import (
 
 	pb "shared/proto"
 
+	"github.com/andybalholm/cascadia"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/html"
 )
@@ -143,21 +144,11 @@ func (s *VideoService) GetVideoTranscript(ctx context.Context, req *pb.GetVideoT
 	}, nil
 }
 
-func extractTranscript(n *html.Node) string {
-	if n.Type == html.ElementNode && n.Data == "div" {
-		for _, attr := range n.Attr {
-			if attr.Key == "id" && attr.Val == "transcript" {
-				return getTextContent(n)
-			}
-		}
+func extractTranscript(doc *html.Node) string {
+	sel := cascadia.MustCompile("div#transcript > p")
+	if node := cascadia.Query(doc, sel); node != nil {
+		return getTextContent(node)
 	}
-
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		if result := extractTranscript(c); result != "" {
-			return result
-		}
-	}
-
 	return ""
 }
 
