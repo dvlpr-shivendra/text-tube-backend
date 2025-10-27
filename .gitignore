@@ -23,9 +23,6 @@ bin/
 .env
 .env.local
 
-# Generated protobuf files
-*.pb.go
-
 # Dependencies
 vendor/
 
