@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"videoservice/internal/models"
 )
 
@@ -81,7 +82,67 @@ type VideoDetailsResponse struct {
 	} `json:"items"`
 }
 
+type ChannelResponse struct {
+	Items []struct {
+		ID      string `json:"id"`
+		Snippet struct {
+			Title       string `json:"title"`
+			Description string `json:"description"`
+			Thumbnails  struct {
+				Default struct {
+					URL string `json:"url"`
+				} `json:"default"`
+			} `json:"thumbnails"`
+		} `json:"snippet"`
+	} `json:"items"`
+}
+
+func (c *YouTubeClient) GetChannelByHandle(handle string) (*models.Channel, error) {
+	apiURL := fmt.Sprintf("https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=%s&key=%s", handle, c.apiKey)
+
+	resp, err := c.httpClient.Get(apiURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("YouTube API error: %s - %s", resp.Status, string(body))
+	}
+
+	var channelResp ChannelResponse
+	if err := json.NewDecoder(resp.Body).Decode(&channelResp); err != nil {
+		return nil, err
+	}
+
+	if len(channelResp.Items) == 0 {
+		return nil, fmt.Errorf("channel not found")
+	}
+
+	item := channelResp.Items[0]
+	return &models.Channel{
+		ChannelID:   item.ID,
+		Title:       item.Snippet.Title,
+		Description: item.Snippet.Description,
+		Thumbnail:   item.Snippet.Thumbnails.Default.URL,
+	}, nil
+}
+
 func (c *YouTubeClient) SearchChannel(channelName string) (*models.Channel, error) {
+	// Check if channelName is a URL like https://www.youtube.com/@VeronicaExplains
+	if strings.HasPrefix(channelName, "http://") || strings.HasPrefix(channelName, "https://") {
+		u, err := url.Parse(channelName)
+		if err == nil {
+			path := strings.TrimPrefix(u.Path, "/@")
+			if path != "" {
+				// Treat as a handle (e.g., @VeronicaExplains)
+				channelHandle := strings.TrimPrefix(path, "@")
+				return c.GetChannelByHandle(channelHandle)
+			}
+		}
+	}
+
 	searchURL := fmt.Sprintf(
 		"https://www.googleapis.com/youtube/v3/search?key=%s&q=%s&type=channel&part=snippet&maxResults=1",
 		c.apiKey,
@@ -187,7 +248,7 @@ func (c *YouTubeClient) GetVideoDetails(videoID string) (*models.Video, error) {
 	}
 
 	item := detailsResp.Items[0]
-	
+
 	var viewCount, likeCount int64
 	fmt.Sscanf(item.Statistics.ViewCount, "%d", &viewCount)
 	fmt.Sscanf(item.Statistics.LikeCount, "%d", &likeCount)
