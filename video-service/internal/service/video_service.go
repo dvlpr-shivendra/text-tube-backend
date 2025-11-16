@@ -14,7 +14,6 @@ import (
 	pb "shared/proto"
 
 	"github.com/andybalholm/cascadia"
-	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/html"
 )
 
