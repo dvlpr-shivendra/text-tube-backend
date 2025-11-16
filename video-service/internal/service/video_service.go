@@ -146,10 +146,20 @@ func (s *VideoService) GetVideoTranscript(ctx context.Context, req *pb.GetVideoT
 
 func extractTranscript(doc *html.Node) string {
 	sel := cascadia.MustCompile("div#transcript > p")
-	if node := cascadia.Query(doc, sel); node != nil {
-		return getTextContent(node)
+	nodes := cascadia.QueryAll(doc, sel)
+	if len(nodes) == 0 {
+		return ""
 	}
-	return ""
+
+	var parts []string
+	for _, n := range nodes {
+		txt := strings.TrimSpace(getTextContent(n))
+		if txt != "" {
+			parts = append(parts, txt)
+		}
+	}
+
+	return strings.Join(parts, " ")
 }
 
 func getTextContent(n *html.Node) string {
@@ -202,9 +212,4 @@ func (s *VideoService) convertVideoToProto(video *models.Video) *pb.VideoInfo {
 		ViewCount:    video.ViewCount,
 		LikeCount:    video.LikeCount,
 	}
-}
-
-// Handle cache miss as not found
-func isCacheMiss(err error) bool {
-	return err == mongo.ErrNoDocuments
 }
