@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -12,9 +10,6 @@ import (
 	"videoservice/internal/repository"
 
 	pb "shared/proto"
-
-	"github.com/andybalholm/cascadia"
-	"golang.org/x/net/html"
 )
 
 type VideoService struct {
@@ -112,65 +107,17 @@ func (s *VideoService) GetVideoDetails(ctx context.Context, req *pb.GetVideoDeta
 }
 
 func (s *VideoService) GetVideoTranscript(ctx context.Context, req *pb.GetVideoTranscriptRequest) (*pb.GetVideoTranscriptResponse, error) {
-	transcriptURL := fmt.Sprintf("https://youtubetotranscript.com/transcript?v=%s", req.VideoId)
-
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", transcriptURL, nil)
+	transcript, err := s.youtubeClient.GetVideoTranscript(req.VideoId)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(httpReq)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch transcript: status %d", resp.StatusCode)
-	}
-
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	transcript := extractTranscript(doc)
 	transcript = cleanWhitespace(transcript)
 
 	return &pb.GetVideoTranscriptResponse{
 		Transcript: transcript,
 		VideoId:    req.VideoId,
 	}, nil
-}
-
-func extractTranscript(doc *html.Node) string {
-	sel := cascadia.MustCompile("div#transcript > p")
-	nodes := cascadia.QueryAll(doc, sel)
-	if len(nodes) == 0 {
-		return ""
-	}
-
-	var parts []string
-	for _, n := range nodes {
-		txt := strings.TrimSpace(getTextContent(n))
-		if txt != "" {
-			parts = append(parts, txt)
-		}
-	}
-
-	return strings.Join(parts, " ")
-}
-
-func getTextContent(n *html.Node) string {
-	if n.Type == html.TextNode {
-		return n.Data
-	}
-
-	var text string
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		text += getTextContent(c)
-	}
-	return text
 }
 
 func cleanWhitespace(s string) string {

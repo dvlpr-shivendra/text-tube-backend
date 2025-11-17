@@ -97,6 +97,17 @@ type ChannelResponse struct {
 	} `json:"items"`
 }
 
+type CaptionsListResponse struct {
+	Items []struct {
+		ID      string `json:"id"`
+		Snippet struct {
+			VideoID  string `json:"videoId"`
+			Language string `json:"language"`
+			Name     string `json:"name"`
+		} `json:"snippet"`
+	} `json:"items"`
+}
+
 func (c *YouTubeClient) GetChannelByHandle(handle string) (*models.Channel, error) {
 	apiURL := fmt.Sprintf("https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=%s&key=%s", handle, c.apiKey)
 
@@ -264,4 +275,96 @@ func (c *YouTubeClient) GetVideoDetails(videoID string) (*models.Video, error) {
 		ViewCount:    viewCount,
 		LikeCount:    likeCount,
 	}, nil
+}
+
+func (c *YouTubeClient) GetVideoTranscript(videoID string) (string, error) {
+	// First, list available captions
+	captionsURL := fmt.Sprintf(
+		"https://www.googleapis.com/youtube/v3/captions?key=%s&videoId=%s&part=snippet",
+		c.apiKey,
+		videoID,
+	)
+
+	resp, err := c.httpClient.Get(captionsURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("YouTube API error: %s - %s", resp.Status, string(body))
+	}
+
+	var captionsResp CaptionsListResponse
+	if err := json.NewDecoder(resp.Body).Decode(&captionsResp); err != nil {
+		return "", err
+	}
+
+	if len(captionsResp.Items) == 0 {
+		return "", fmt.Errorf("no captions found for video")
+	}
+
+	// Get the first available caption track
+	captionID := captionsResp.Items[0].ID
+
+	// Download the caption track
+	downloadURL := fmt.Sprintf(
+		"https://www.googleapis.com/youtube/v3/captions/%s?key=%s&tfmt=srt",
+		captionID,
+		c.apiKey,
+	)
+
+	resp, err = c.httpClient.Get(downloadURL)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("YouTube API error: %s - %s", resp.Status, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse SRT format and extract text
+	transcript := parseSRTTranscript(string(body))
+	return transcript, nil
+}
+
+func parseSRTTranscript(srt string) string {
+	lines := strings.Split(srt, "\n")
+	var transcript []string
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		// Skip empty lines, sequence numbers, and timecodes
+		if trimmed == "" || isSequenceNumber(trimmed) || isTimecode(trimmed) {
+			continue
+		}
+		if trimmed != "" {
+			transcript = append(transcript, trimmed)
+		}
+	}
+
+	return strings.Join(transcript, " ")
+}
+
+func isSequenceNumber(s string) bool {
+	// Check if string is just a number
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return s != ""
+}
+
+func isTimecode(s string) bool {
+	// Check if string looks like "00:00:00,000 --> 00:00:05,000"
+	return strings.Contains(s, "-->")
 }
