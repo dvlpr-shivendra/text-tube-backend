@@ -1,20 +1,17 @@
 package service
 
 import (
-	"context"
-	"fmt"
-	"net/http"
-	"regexp"
-	"strings"
-	"time"
-	"videoservice/internal/client"
-	"videoservice/internal/models"
-	"videoservice/internal/repository"
+    "context"
+    "fmt"
+    "os/exec"
+    "regexp"
+    "strings"
+    "time"
+    "videoservice/internal/client"
+    "videoservice/internal/models"
+    "videoservice/internal/repository"
 
-	pb "shared/proto"
-
-	"github.com/andybalholm/cascadia"
-	"golang.org/x/net/html"
+    pb "shared/proto"
 )
 
 type VideoService struct {
@@ -112,30 +109,16 @@ func (s *VideoService) GetVideoDetails(ctx context.Context, req *pb.GetVideoDeta
 }
 
 func (s *VideoService) GetVideoTranscript(ctx context.Context, req *pb.GetVideoTranscriptRequest) (*pb.GetVideoTranscriptResponse, error) {
-	transcriptURL := fmt.Sprintf("https://youtubetotranscript.com/transcript?v=%s", req.VideoId)
-
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", transcriptURL, nil)
+	cmd := exec.CommandContext(ctx, "youtube_transcript_api", req.VideoId, "--languages", "en", "hi")
+	output, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to fetch transcript: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	transcript, err := parseTranscriptOutput(string(output))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse transcript: %w", err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch transcript: status %d", resp.StatusCode)
-	}
-
-	doc, err := html.Parse(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	transcript := extractTranscript(doc)
-	transcript = cleanWhitespace(transcript)
 
 	return &pb.GetVideoTranscriptResponse{
 		Transcript: transcript,
@@ -143,34 +126,31 @@ func (s *VideoService) GetVideoTranscript(ctx context.Context, req *pb.GetVideoT
 	}, nil
 }
 
-func extractTranscript(doc *html.Node) string {
-	sel := cascadia.MustCompile("div#transcript > p")
-	nodes := cascadia.QueryAll(doc, sel)
-	if len(nodes) == 0 {
-		return ""
+func parseTranscriptOutput(output string) (string, error) {
+	// The CLI wraps the list in an outer list: [[{...}, {...}]]
+	// Strip the outer brackets to get the inner list
+	output = strings.TrimSpace(output)
+	if !strings.HasPrefix(output, "[[") || !strings.HasSuffix(output, "]]") {
+		return "", fmt.Errorf("unexpected transcript format")
+	}
+	output = output[1 : len(output)-1] // strip outer [ and ]
+
+	// Use regex to extract all 'text' field values
+	re := regexp.MustCompile(`'text':\s*'((?:[^'\\]|\\.)*)'`)
+	matches := re.FindAllStringSubmatch(output, -1)
+	if len(matches) == 0 {
+		return "", fmt.Errorf("no transcript text found")
 	}
 
 	var parts []string
-	for _, n := range nodes {
-		txt := strings.TrimSpace(getTextContent(n))
+	for _, m := range matches {
+		txt := strings.TrimSpace(m[1])
 		if txt != "" {
 			parts = append(parts, txt)
 		}
 	}
 
-	return strings.Join(parts, " ")
-}
-
-func getTextContent(n *html.Node) string {
-	if n.Type == html.TextNode {
-		return n.Data
-	}
-
-	var text string
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		text += getTextContent(c)
-	}
-	return text
+	return cleanWhitespace(strings.Join(parts, " ")), nil
 }
 
 func cleanWhitespace(s string) string {
