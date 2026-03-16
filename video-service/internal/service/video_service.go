@@ -1,31 +1,40 @@
 package service
 
 import (
-    "context"
-    "fmt"
-    "os/exec"
-    "regexp"
-    "strings"
-    "time"
-    "videoservice/internal/client"
-    "videoservice/internal/models"
-    "videoservice/internal/repository"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"regexp"
+	"strings"
+	"time"
+	"videoservice/internal/client"
+	"videoservice/internal/models"
+	"videoservice/internal/repository"
 
-    pb "shared/proto"
+	pb "shared/proto"
 )
 
 type VideoService struct {
 	pb.UnimplementedVideoServiceServer
-	videoRepo     *repository.VideoRepository
-	youtubeClient *client.YouTubeClient
-	cacheMaxAge   time.Duration
+	videoRepo            *repository.VideoRepository
+	youtubeClient        *client.YouTubeClient
+	cacheMaxAge          time.Duration
+	transcriptServiceURL string
 }
 
 func NewVideoService(videoRepo *repository.VideoRepository, youtubeClient *client.YouTubeClient) *VideoService {
+	transcriptURL := os.Getenv("TRANSCRIPT_SERVICE_URL")
+	if transcriptURL == "" {
+		transcriptURL = "http://localhost:8081"
+	}
+
 	return &VideoService{
-		videoRepo:     videoRepo,
-		youtubeClient: youtubeClient,
-		cacheMaxAge:   30 * time.Minute, // Cache for 30 minutes
+		videoRepo:            videoRepo,
+		youtubeClient:        youtubeClient,
+		cacheMaxAge:          30 * time.Minute, // Cache for 30 minutes
+		transcriptServiceURL: transcriptURL,
 	}
 }
 
@@ -109,48 +118,40 @@ func (s *VideoService) GetVideoDetails(ctx context.Context, req *pb.GetVideoDeta
 }
 
 func (s *VideoService) GetVideoTranscript(ctx context.Context, req *pb.GetVideoTranscriptRequest) (*pb.GetVideoTranscriptResponse, error) {
-	cmd := exec.CommandContext(ctx, "youtube_transcript_api", req.VideoId, "--languages", "en", "hi")
-	output, err := cmd.Output()
+	// Validate video ID format
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9_-]{11}$`, req.VideoId)
+	if !matched {
+		return nil, fmt.Errorf("invalid video id")
+	}
+
+	transcriptURL := fmt.Sprintf("%s/transcript?videoId=%s", s.transcriptServiceURL, req.VideoId)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, transcriptURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch transcript: %w", err)
 	}
+	defer resp.Body.Close()
 
-	transcript, err := parseTranscriptOutput(string(output))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse transcript: %w", err)
+	var result struct {
+		Transcript string `json:"transcript"`
+		Error      string `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	if result.Error != "" {
+		return nil, fmt.Errorf("transcript service error: %s", result.Error)
 	}
 
 	return &pb.GetVideoTranscriptResponse{
-		Transcript: transcript,
+		Transcript: result.Transcript,
 		VideoId:    req.VideoId,
 	}, nil
-}
-
-func parseTranscriptOutput(output string) (string, error) {
-	// The CLI wraps the list in an outer list: [[{...}, {...}]]
-	// Strip the outer brackets to get the inner list
-	output = strings.TrimSpace(output)
-	if !strings.HasPrefix(output, "[[") || !strings.HasSuffix(output, "]]") {
-		return "", fmt.Errorf("unexpected transcript format")
-	}
-	output = output[1 : len(output)-1] // strip outer [ and ]
-
-	// Use regex to extract all 'text' field values
-	re := regexp.MustCompile(`'text':\s*'((?:[^'\\]|\\.)*)'`)
-	matches := re.FindAllStringSubmatch(output, -1)
-	if len(matches) == 0 {
-		return "", fmt.Errorf("no transcript text found")
-	}
-
-	var parts []string
-	for _, m := range matches {
-		txt := strings.TrimSpace(m[1])
-		if txt != "" {
-			parts = append(parts, txt)
-		}
-	}
-
-	return cleanWhitespace(strings.Join(parts, " ")), nil
 }
 
 func cleanWhitespace(s string) string {
