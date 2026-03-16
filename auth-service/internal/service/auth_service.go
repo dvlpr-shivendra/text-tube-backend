@@ -2,7 +2,6 @@ package service
 
 import (
 	"authservice/internal/models"
-	"authservice/internal/repository"
 	"context"
 	"errors"
 	"time"
@@ -13,13 +12,19 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type UserRepository interface {
+	Create(ctx context.Context, user *models.User) error
+	FindByEmail(ctx context.Context, email string) (*models.User, error)
+	FindByID(ctx context.Context, id string) (*models.User, error)
+}
+
 type AuthService struct {
 	pb.UnimplementedAuthServiceServer
-	userRepo  *repository.UserRepository
+	userRepo  UserRepository
 	jwtSecret []byte
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *AuthService {
+func NewAuthService(userRepo UserRepository, jwtSecret string) *AuthService {
 	return &AuthService{
 		userRepo:  userRepo,
 		jwtSecret: []byte(jwtSecret),
@@ -27,6 +32,19 @@ func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *Auth
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.AuthSuccessResponse, error) {
+	if req.Email == "" || req.Password == "" || req.Username == "" {
+		return nil, errors.New("missing required fields")
+	}
+
+	// Check if user already exists
+	existingUser, err := s.userRepo.FindByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, err
+	}
+	if existingUser != nil {
+		return nil, errors.New("user already exists")
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -42,14 +60,14 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, err
 	}
 
-	token, err := s.generateToken(user.ID, user.Username)
+	token, err := s.generateToken(user.ID.Hex(), user.Username)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.AuthSuccessResponse{
 		Token:    token,
-		UserId:   user.ID,
+		UserId:   user.ID.Hex(),
 		Username: user.Username,
 	}, nil
 }
@@ -59,19 +77,22 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Auth
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
+	if user == nil {
+		return nil, errors.New("invalid credentials")
+	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		return nil, errors.New("invalid credentials")
 	}
 
-	token, err := s.generateToken(user.ID, user.Username)
+	token, err := s.generateToken(user.ID.Hex(), user.Username)
 	if err != nil {
 		return nil, err
 	}
 
 	return &pb.AuthSuccessResponse{
 		Token:    token,
-		UserId:   user.ID,
+		UserId:   user.ID.Hex(),
 		Username: user.Username,
 	}, nil
 }
@@ -79,7 +100,7 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Auth
 func (s *AuthService) ValidateToken(ctx context.Context, req *pb.ValidateTokenRequest) (*pb.ValidateTokenResponse, error) {
 	token, err := jwt.Parse(req.Token, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, errors.New("invalid signing method")
+			return nil, errors.New("unexpected signing method")
 		}
 		return s.jwtSecret, nil
 	})
@@ -93,10 +114,16 @@ func (s *AuthService) ValidateToken(ctx context.Context, req *pb.ValidateTokenRe
 		return &pb.ValidateTokenResponse{Valid: false}, nil
 	}
 
+	userID, ok1 := claims["user_id"].(string)
+	username, ok2 := claims["username"].(string)
+	if !ok1 || !ok2 {
+		return &pb.ValidateTokenResponse{Valid: false}, nil
+	}
+
 	return &pb.ValidateTokenResponse{
 		Valid:    true,
-		UserId:   claims["user_id"].(string),
-		Username: claims["username"].(string),
+		UserId:   userID,
+		Username: username,
 	}, nil
 }
 

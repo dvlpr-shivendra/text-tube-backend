@@ -30,7 +30,10 @@ func (r *UserRepository) Create(ctx context.Context, user *models.User) error {
 		return err
 	}
 
-	user.ID = result.InsertedID.(primitive.ObjectID).Hex()
+	if oid, ok := result.InsertedID.(primitive.ObjectID); ok {
+		user.ID = oid
+	}
+
 	return nil
 }
 
@@ -38,6 +41,9 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*models
 	var user models.User
 	err := r.collection.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &user, nil
@@ -52,6 +58,9 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (*models.User,
 	var user models.User
 	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
 	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &user, nil
