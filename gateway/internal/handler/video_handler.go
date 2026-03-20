@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"gateway/internal/client"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -19,10 +20,16 @@ func NewVideoHandler(videoClient *client.VideoClient) *VideoHandler {
 	return &VideoHandler{videoClient: videoClient}
 }
 
+func (h *VideoHandler) sendJSONError(w http.ResponseWriter, message string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
 func (h *VideoHandler) SearchChannel(w http.ResponseWriter, r *http.Request) {
 	channelName := r.URL.Query().Get("channel")
 	if channelName == "" {
-		http.Error(w, "channel parameter is required", http.StatusBadRequest)
+		h.sendJSONError(w, "channel parameter is required", http.StatusBadRequest)
 		return
 	}
 
@@ -33,7 +40,8 @@ func (h *VideoHandler) SearchChannel(w http.ResponseWriter, r *http.Request) {
 		UserId:      userID,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("SearchChannel failure: %v", err)
+		h.sendJSONError(w, "Failed to search channel", http.StatusInternalServerError)
 		return
 	}
 
@@ -60,7 +68,8 @@ func (h *VideoHandler) GetChannelVideos(w http.ResponseWriter, r *http.Request) 
 		MaxResults: maxResults,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("GetChannelVideos failure: %v", err)
+		h.sendJSONError(w, "Failed to get channel videos", http.StatusInternalServerError)
 		return
 	}
 
@@ -79,7 +88,8 @@ func (h *VideoHandler) GetVideoDetails(w http.ResponseWriter, r *http.Request) {
 		UserId:  userID,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("GetVideoDetails failure: %v", err)
+		h.sendJSONError(w, "Failed to get video details", http.StatusInternalServerError)
 		return
 	}
 
@@ -98,7 +108,8 @@ func (h *VideoHandler) GetVideoTranscript(w http.ResponseWriter, r *http.Request
 		UserId:  userID,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("GetVideoTranscript failure: %v", err)
+		h.sendJSONError(w, "Failed to get video transcript", http.StatusInternalServerError)
 		return
 	}
 

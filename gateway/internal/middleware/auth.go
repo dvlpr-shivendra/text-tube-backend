@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 
@@ -21,13 +23,19 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
+			log.Println("Auth failure: missing Authorization header")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
 
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if token == authHeader {
-			http.Error(w, "Invalid authorization format", http.StatusUnauthorized)
+			log.Println("Auth failure: invalid authorization format")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
 
@@ -36,7 +44,14 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 		})
 
 		if err != nil || !resp.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			if err != nil {
+				log.Printf("Auth failure: token validation failed: %v", err)
+			} else {
+				log.Println("Auth failure: token is invalid")
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized"})
 			return
 		}
 

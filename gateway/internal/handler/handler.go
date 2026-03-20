@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"gateway/internal/client"
+	"log"
 	"net/http"
 
 	pb "shared/proto"
@@ -32,10 +33,17 @@ func (h *Handler) HealthCheck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "gateway"})
 }
 
+func (h *Handler) sendJSONError(w http.ResponseWriter, message string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		log.Printf("Register failure: invalid request body: %v", err)
+		h.sendJSONError(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -45,7 +53,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Register failure: %v", err)
+		h.sendJSONError(w, "Registration failed", http.StatusInternalServerError)
 		return
 	}
 
@@ -61,7 +70,8 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		log.Printf("Login failure: invalid request body: %v", err)
+		h.sendJSONError(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -70,7 +80,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		log.Printf("Login failure for email %s: %v", req.Email, err)
+		h.sendJSONError(w, "Authentication failed", http.StatusUnauthorized)
 		return
 	}
 
