@@ -32,8 +32,16 @@ func NewAuthService(userRepo UserRepository, jwtSecret string) *AuthService {
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.AuthSuccessResponse, error) {
-	if req.Email == "" || req.Password == "" || req.Username == "" {
-		return nil, errors.New("missing required fields")
+	if req.Email == "" {
+		return nil, errors.New("missing required fields: Email")
+	}
+
+	if req.Password == "" {
+		return nil, errors.New("missing required fields: Password")
+	}
+
+	if req.Username == "" {
+		return nil, errors.New("missing required fields: Username")
 	}
 
 	// Check if user already exists
