@@ -2,14 +2,15 @@
 <table width="100%" border="0" cellpadding="10">
   <tr>
     <td>
-      <h2>{{.Video.Title}}</h2>
-      <p><font size="4">Channel: {{.Video.ChannelTitle}}</font></p>
+      <font size="7"><b>{{.Video.Title}}</b></font>
+      <p><font size="5">Channel: {{.Video.ChannelTitle}}</font></p>
       <hr>
       
       {{if .Summary}}
-      <h3>Summary</h3>
-      <table width="100%" border="1" cellpadding="15">
-        <tr><td><font size="4">{{.Summary}}</font></td></tr>
+      <font size="6"><b>Summary</b></font>
+      <br><br>
+      <table width="100%" border="1" cellpadding="25" bgcolor="#111111" bordercolor="#444444">
+        <tr><td><font size="6">{{.Summary}}</font></td></tr>
       </table>
       <br>
       {{end}}
