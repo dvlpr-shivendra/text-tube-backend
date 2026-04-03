@@ -41,6 +41,7 @@ func main() {
 
 	h := handler.NewHandler(authClient)
 	vh := handler.NewVideoHandler(videoClient)
+	ssrh := handler.NewSSRHandler(authClient, videoClient)
 	m := middleware.NewMiddleware(authClient)
 
 	r := mux.NewRouter()
@@ -50,7 +51,21 @@ func main() {
 	r.HandleFunc("/api/auth/register", h.Register).Methods("POST")
 	r.HandleFunc("/api/auth/login", h.Login).Methods("POST")
 
-	// Protected routes
+	// SSR Public routes
+	r.HandleFunc("/login", ssrh.ShowLogin).Methods("GET")
+	r.HandleFunc("/login", ssrh.Login).Methods("POST")
+	r.HandleFunc("/register", ssrh.ShowRegister).Methods("GET")
+	r.HandleFunc("/register", ssrh.Register).Methods("POST")
+	r.HandleFunc("/logout", ssrh.Logout).Methods("GET")
+
+	// SSR Protected routes
+	ssr := r.PathPrefix("/").Subrouter()
+	ssr.Use(m.SSRAuthMiddleware)
+	ssr.HandleFunc("/", ssrh.Home).Methods("GET")
+	ssr.HandleFunc("/video/{videoId}", ssrh.VideoDetail).Methods("GET")
+	ssr.HandleFunc("/video/{videoId}/summarize", ssrh.Summarize).Methods("POST")
+
+	// Protected JSON routes
 	protected := r.PathPrefix("/api").Subrouter()
 	protected.Use(m.AuthMiddleware)
 	protected.HandleFunc("/profile", h.GetProfile).Methods("GET")

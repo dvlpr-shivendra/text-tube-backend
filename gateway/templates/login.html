@@ -1,0 +1,31 @@
+{{define "content"}}
+<table width="100%" border="0" cellpadding="10">
+  <tr>
+    <td align="center">
+      <h2>Login</h2>
+      {{if .Error}}<p><font color="#FF0000"><b>{{.Error}}</b></font></p>{{end}}
+      <form action="/login" method="POST">
+        <table border="0">
+          <tr>
+            <td>Email:</td>
+            <td><input type="text" name="email" size="30" style="height: 50px; font-size: 24px;"></td>
+          </tr>
+          <tr>
+            <td>Password:</td>
+            <td><input type="password" name="password" size="30" style="height: 50px; font-size: 24px;"></td>
+          </tr>
+          <tr>
+            <td colspan="2" align="center">
+              <br>
+              <input type="submit" value=" LOGIN " style="height: 80px; width: 200px; font-size: 30px; font-weight: bold;">
+            </td>
+          </tr>
+        </table>
+      </form>
+      <br>
+      <br>
+      <a href="/register"><font size="4">Don't have an account? Register here</font></a>
+    </td>
+  </tr>
+</table>
+{{end}}

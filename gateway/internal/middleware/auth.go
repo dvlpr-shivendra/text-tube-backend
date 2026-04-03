@@ -61,3 +61,38 @@ func (m *Middleware) AuthMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+func (m *Middleware) SSRAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookie, err := r.Cookie("session_token")
+		if err != nil {
+			log.Println("SSR Auth failure: missing session_token cookie")
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		token := cookie.Value
+		resp, err := m.authClient.ValidateToken(r.Context(), &pb.ValidateTokenRequest{
+			Token: token,
+		})
+
+		if err != nil || !resp.Valid {
+			if err != nil {
+				log.Printf("SSR Auth failure: token validation failed: %v", err)
+			} else {
+				log.Println("SSR Auth failure: token is invalid")
+			}
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		// Set context values
+		ctx := context.WithValue(r.Context(), "user_id", resp.UserId)
+		ctx = context.WithValue(ctx, "username", resp.Username)
+
+		// Set Authorization header for internal calls (re-using bearer auth pattern)
+		r.Header.Set("Authorization", "Bearer "+token)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

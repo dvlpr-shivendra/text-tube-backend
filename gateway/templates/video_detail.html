@@ -1,0 +1,26 @@
+{{define "content"}}
+<table width="100%" border="0" cellpadding="10">
+  <tr>
+    <td>
+      <h2>{{.Video.Title}}</h2>
+      <p><font size="4">Channel: {{.Video.ChannelTitle}}</font></p>
+      <hr>
+      
+      {{if .Summary}}
+      <h3>Summary</h3>
+      <table width="100%" border="1" cellpadding="15">
+        <tr><td><font size="4">{{.Summary}}</font></td></tr>
+      </table>
+      <br>
+      {{end}}
+
+      <form action="/video/{{.Video.VideoId}}/summarize" method="POST">
+        <input type="submit" value=" {{if .Summary}}RE-SUMMARIZE{{else}}SUMMARIZE VIDEO{{end}} " style="height: 80px; width: 100%; font-size: 30px; font-weight: bold;">
+      </form>
+      
+      <br>
+      <a href="/"><font size="4">Back to Home</font></a>
+    </td>
+  </tr>
+</table>
+{{end}}

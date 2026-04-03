@@ -1,0 +1,33 @@
+{{define "content"}}
+<table width="100%" border="0" cellpadding="10">
+  <tr>
+    <td>
+      <font size="5">Welcome, <b>{{.Username}}</b></font>
+      <hr>
+      <h3>Search Channel</h3>
+      <form action="/" method="GET">
+        <input type="text" name="q" size="40" value="{{.Query}}" style="height: 60px; font-size: 24px;">
+        <input type="submit" value=" SEARCH " style="height: 60px; font-size: 24px;">
+      </form>
+      
+      {{if .Videos}}
+      <hr>
+      <h3>Results</h3>
+      <table width="100%" border="1" cellpadding="15" cellspacing="0">
+        {{range .Videos}}
+        <tr>
+          <td>
+            <font size="4"><b>{{.Title}}</b></font><br>
+            <font size="3">{{.ChannelTitle}}</font><br><br>
+            <a href="/video/{{.VideoId}}"><font size="5"><b>VIEW DETAILS</b></font></a>
+          </td>
+        </tr>
+        {{end}}
+      </table>
+      {{else if .Query}}
+      <p>No videos found for "{{.Query}}"</p>
+      {{end}}
+    </td>
+  </tr>
+</table>
+{{end}}
