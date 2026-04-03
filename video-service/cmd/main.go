@@ -35,6 +35,11 @@ func main() {
 		log.Fatal("YOUTUBE_API_KEY environment variable is required")
 	}
 
+	geminiAPIKey := os.Getenv("GEMINI_API_KEY")
+	if geminiAPIKey == "" {
+		log.Fatal("GEMINI_API_KEY environment variable is required")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -53,7 +58,14 @@ func main() {
 	db := mongoClient.Database("text_tube")
 	videoRepo := repository.NewVideoRepository(db)
 	youtubeClient := client.NewYouTubeClient(youtubeAPIKey)
-	videoService := service.NewVideoService(videoRepo, youtubeClient)
+
+	geminiClient, err := client.NewGeminiClient(context.Background(), geminiAPIKey)
+	if err != nil {
+		log.Fatalf("Failed to create Gemini client: %v", err)
+	}
+	defer geminiClient.Close()
+
+	videoService := service.NewVideoService(videoRepo, youtubeClient, geminiClient)
 
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {

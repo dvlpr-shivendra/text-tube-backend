@@ -11,7 +11,19 @@ service VideoService {
   rpc GetVideoDetails(GetVideoDetailsRequest) returns (GetVideoDetailsResponse);
   rpc GetVideoTranscript(GetVideoTranscriptRequest)
       returns (GetVideoTranscriptResponse);
+  rpc SummarizeVideo(SummarizeVideoRequest) returns (SummarizeVideoResponse);
 }
+
+message SummarizeVideoRequest {
+  string video_id = 1;
+  string user_id = 2;
+}
+
+message SummarizeVideoResponse {
+  string summary = 1;
+  string video_id = 2;
+}
+
 
 message SearchChannelRequest {
   string channel_name = 1;

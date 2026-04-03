@@ -116,3 +116,24 @@ func (h *VideoHandler) GetVideoTranscript(w http.ResponseWriter, r *http.Request
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
 }
+
+func (h *VideoHandler) SummarizeVideo(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	videoID := vars["videoId"]
+
+	userID := r.Context().Value("user_id").(string)
+
+	resp, err := h.videoClient.SummarizeVideo(r.Context(), &pb.SummarizeVideoRequest{
+		VideoId: videoID,
+		UserId:  userID,
+	})
+	if err != nil {
+		log.Printf("SummarizeVideo failure: %v", err)
+		h.sendJSONError(w, "Failed to summarize video", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
+}
+

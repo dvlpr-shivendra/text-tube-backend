@@ -14,7 +14,7 @@ import (
 func main() {
 	port := os.Getenv("GATEWAY_PORT")
 	if port == "" {
-		port = "8080"
+		port = "9191"
 	}
 
 	authServiceAddr := os.Getenv("AUTH_SERVICE_ADDR")
@@ -59,7 +59,8 @@ func main() {
 	protected.HandleFunc("/videos/search", vh.SearchChannel).Methods("GET")
 	protected.HandleFunc("/videos/channel/{channelId}", vh.GetChannelVideos).Methods("GET")
 	protected.HandleFunc("/videos/{videoId}", vh.GetVideoDetails).Methods("GET")
-	protected.HandleFunc("/videos/{videoId}/transcript", vh.GetVideoTranscript).Methods("GET") // NEW
+	protected.HandleFunc("/videos/{videoId}/transcript", vh.GetVideoTranscript).Methods("GET")
+	protected.HandleFunc("/videos/{videoId}/summarize", vh.SummarizeVideo).Methods("GET")
 
 	// Wrap router with CORS middleware
 	handler := CORSMiddleware(r)

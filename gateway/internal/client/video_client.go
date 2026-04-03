@@ -42,6 +42,11 @@ func (c *VideoClient) GetVideoTranscript(ctx context.Context, req *pb.GetVideoTr
 	return c.client.GetVideoTranscript(ctx, req)
 }
 
+func (c *VideoClient) SummarizeVideo(ctx context.Context, req *pb.SummarizeVideoRequest) (*pb.SummarizeVideoResponse, error) {
+	return c.client.SummarizeVideo(ctx, req)
+}
+
+
 func (c *VideoClient) Close() error {
 	return c.conn.Close()
 }
