@@ -1,16 +1,19 @@
 package handler
 
 import (
+	"embed"
 	"gateway/internal/client"
 	"html/template"
 	"log"
 	"net/http"
-	"path/filepath"
 
 	pb "shared/proto"
 
 	"github.com/gorilla/mux"
 )
+
+//go:embed templates/*.html
+var templateFS embed.FS
 
 type SSRHandler struct {
 	authClient  *client.AuthClient
@@ -29,14 +32,12 @@ func NewSSRHandler(authClient *client.AuthClient, videoClient *client.VideoClien
 }
 
 func (h *SSRHandler) parseTemplates() {
-	templateDir := "templates"
-	layoutPath := filepath.Join(templateDir, "layout.html")
-
+	layoutPath := "templates/layout.html"
 	pages := []string{"login", "register", "home", "video_detail"}
 
 	for _, page := range pages {
-		pagePath := filepath.Join(templateDir, page+".html")
-		tmpl, err := template.ParseFiles(layoutPath, pagePath)
+		pagePath := "templates/" + page + ".html"
+		tmpl, err := template.ParseFS(templateFS, layoutPath, pagePath)
 		if err != nil {
 			log.Fatalf("Error parsing template %s: %v", page, err)
 		}
@@ -195,14 +196,34 @@ func (h *SSRHandler) Summarize(w http.ResponseWriter, r *http.Request) {
 	videoID := vars["videoId"]
 	userID := r.Context().Value("user_id").(string)
 
-	_, err := h.videoClient.SummarizeVideo(r.Context(), &pb.SummarizeVideoRequest{
+	resp, err := h.videoClient.SummarizeVideo(r.Context(), &pb.SummarizeVideoRequest{
 		VideoId: videoID,
 		UserId:  userID,
 	})
 	if err != nil {
 		log.Printf("Summarize error: %v", err)
+		http.Redirect(w, r, "/video/"+videoID, http.StatusSeeOther)
+		return
 	}
 
-	// Redirect back to detail page
-	http.Redirect(w, r, "/video/"+videoID, http.StatusSeeOther)
+	// Fetch video details to render the full page
+	videoResp, err := h.videoClient.GetVideoDetails(r.Context(), &pb.GetVideoDetailsRequest{
+		VideoId: videoID,
+		UserId:  userID,
+	})
+	if err != nil {
+		http.Error(w, "Video not found", http.StatusNotFound)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Title":         videoResp.Video.Title + " - TextTube",
+		"Authenticated": true,
+		"Video":         videoResp.Video,
+		"Summary":       resp.Summary,
+	}
+
+	if err := h.templates["video_detail"].ExecuteTemplate(w, "layout.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
