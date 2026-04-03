@@ -191,8 +191,6 @@ func (s *VideoService) SummarizeVideo(ctx context.Context, req *pb.SummarizeVide
 		return nil, fmt.Errorf("failed to fetch transcript for summarization: %w", err)
 	}
 
-	transcriptResp.Transcript = "Hello, this is a test transcript."
-
 	if transcriptResp.Transcript == "" {
 		log.Printf("Empty transcript for video %s, cannot summarize", req.VideoId)
 		return nil, fmt.Errorf("transcript is empty, cannot generate summary")
