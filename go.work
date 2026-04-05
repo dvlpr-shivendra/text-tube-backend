@@ -6,4 +6,5 @@ use (
 	./shared
 	./tests/e2e
 	./video-service
+	./mcp-server
 )

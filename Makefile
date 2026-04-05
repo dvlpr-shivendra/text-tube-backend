@@ -10,11 +10,13 @@ tidy:
 	cd gateway && go mod tidy
 	cd auth-service && go mod tidy
 	cd video-service && go mod tidy
+	cd mcp-server && go mod tidy
 
 build:
 	cd gateway && go build -o ../bin/gateway ./cmd/main.go
 	cd auth-service && go build -o ../bin/auth-service ./cmd/main.go
 	cd video-service && go build -o ../bin/video-service ./cmd/main.go
+	cd mcp-server && go build -o ../bin/mcp-server ./main.go
 
 run-auth:
 	cd auth-service && go run ./cmd/main.go
@@ -24,6 +26,9 @@ run-gateway:
 
 run-video:
 	cd video-service && go run ./cmd/main.go
+
+run-mcp:
+	cd mcp-server && go run ./main.go
 
 run-local:
 	@echo "Starting auth service..."
