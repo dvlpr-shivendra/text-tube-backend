@@ -9,8 +9,29 @@ import (
 	"os"
 
 	"github.com/gorilla/mux"
+	_ "gateway/docs" // This is where swag will generate the docs
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+// @title TextTube Gateway API
+// @version 1.0
+// @description This is the API gateway for the TextTube project.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:9191
+// @BasePath /
+// @query.collection.format multi
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 func main() {
 	port := os.Getenv("GATEWAY_PORT")
 	if port == "" {
@@ -50,6 +71,9 @@ func main() {
 	r.HandleFunc("/health", h.HealthCheck).Methods("GET")
 	r.HandleFunc("/api/auth/register", h.Register).Methods("POST")
 	r.HandleFunc("/api/auth/login", h.Login).Methods("POST")
+
+	// Swagger UI
+	r.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	// SSR Public routes
 	r.HandleFunc("/login", ssrh.ShowLogin).Methods("GET")

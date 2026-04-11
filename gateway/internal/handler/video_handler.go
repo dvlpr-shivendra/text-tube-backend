@@ -20,12 +20,67 @@ func NewVideoHandler(videoClient *client.VideoClient) *VideoHandler {
 	return &VideoHandler{videoClient: videoClient}
 }
 
+type VideoThumbnail struct {
+	URL    string `json:"url"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+}
+
+type VideoSummary struct {
+	VideoID      string         `json:"video_id"`
+	Title        string         `json:"title"`
+	Description  string         `json:"description"`
+	ThumbnailURL string         `json:"thumbnail_url"`
+	PublishedAt  string         `json:"published_at"`
+	ChannelID    string         `json:"channel_id"`
+	ChannelTitle string         `json:"channel_title"`
+}
+
+type SearchChannelResponse struct {
+	ChannelID          string         `json:"channel_id"`
+	ChannelTitle       string         `json:"channel_title"`
+	ChannelDescription string         `json:"channel_description"`
+	ThumbnailURL       string         `json:"thumbnail_url"`
+	Videos             []VideoSummary `json:"videos"`
+}
+
+type VideoDetailsResponse struct {
+	Video VideoSummary `json:"video"`
+}
+
+type TranscriptLine struct {
+	Text      string  `json:"text"`
+	StartTime float64 `json:"start_time"`
+	Duration  float64 `json:"duration"`
+}
+
+type TranscriptResponse struct {
+	VideoID    string           `json:"video_id"`
+	Transcript []TranscriptLine `json:"transcript"`
+}
+
+type SummarizeResponse struct {
+	VideoID string `json:"video_id"`
+	Summary string `json:"summary"`
+}
+
 func (h *VideoHandler) sendJSONError(w http.ResponseWriter, message string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
+// SearchChannel godoc
+// @Summary Search for a YouTube channel
+// @Description Search for a channel by name and return its details and recent videos
+// @Tags videos
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param channel query string true "Channel Name"
+// @Success 200 {object} SearchChannelResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/videos/search [get]
 func (h *VideoHandler) SearchChannel(w http.ResponseWriter, r *http.Request) {
 	channelName := r.URL.Query().Get("channel")
 	if channelName == "" {
@@ -49,6 +104,18 @@ func (h *VideoHandler) SearchChannel(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// GetChannelVideos godoc
+// @Summary Get videos from a channel
+// @Description Get a list of videos from a specific channel ID
+// @Tags videos
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param channelId path string true "Channel ID"
+// @Param max_results query int false "Max Results" default(10)
+// @Success 200 {object} SearchChannelResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/videos/channel/{channelId} [get]
 func (h *VideoHandler) GetChannelVideos(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	channelID := vars["channelId"]
@@ -77,6 +144,17 @@ func (h *VideoHandler) GetChannelVideos(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(resp)
 }
 
+// GetVideoDetails godoc
+// @Summary Get video details
+// @Description Get detailed information about a specific video
+// @Tags videos
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param videoId path string true "Video ID"
+// @Success 200 {object} VideoDetailsResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/videos/{videoId} [get]
 func (h *VideoHandler) GetVideoDetails(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	videoID := vars["videoId"]
@@ -97,6 +175,17 @@ func (h *VideoHandler) GetVideoDetails(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
+// GetVideoTranscript godoc
+// @Summary Get video transcript
+// @Description Get the transcript of a specific video
+// @Tags videos
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param videoId path string true "Video ID"
+// @Success 200 {object} TranscriptResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/videos/{videoId}/transcript [get]
 func (h *VideoHandler) GetVideoTranscript(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	videoID := vars["videoId"]
@@ -117,6 +206,17 @@ func (h *VideoHandler) GetVideoTranscript(w http.ResponseWriter, r *http.Request
 	json.NewEncoder(w).Encode(resp)
 }
 
+// SummarizeVideo godoc
+// @Summary Summarize a video
+// @Description Generate a summary for a specific video
+// @Tags videos
+// @Accept  json
+// @Produce  json
+// @Security ApiKeyAuth
+// @Param videoId path string true "Video ID"
+// @Success 200 {object} SummarizeResponse
+// @Failure 401 {object} ErrorResponse
+// @Router /api/videos/{videoId}/summarize [get]
 func (h *VideoHandler) SummarizeVideo(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	videoID := vars["videoId"]

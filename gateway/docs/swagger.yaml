@@ -1,0 +1,361 @@
+basePath: /
+definitions:
+  handler.AuthResponse:
+    properties:
+      token:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handler.HealthResponse:
+    properties:
+      service:
+        type: string
+      status:
+        type: string
+    type: object
+  handler.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  handler.ProfileResponse:
+    properties:
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.SearchChannelResponse:
+    properties:
+      channel_description:
+        type: string
+      channel_id:
+        type: string
+      channel_title:
+        type: string
+      thumbnail_url:
+        type: string
+      videos:
+        items:
+          $ref: '#/definitions/handler.VideoSummary'
+        type: array
+    type: object
+  handler.SummarizeResponse:
+    properties:
+      summary:
+        type: string
+      video_id:
+        type: string
+    type: object
+  handler.TranscriptLine:
+    properties:
+      duration:
+        type: number
+      start_time:
+        type: number
+      text:
+        type: string
+    type: object
+  handler.TranscriptResponse:
+    properties:
+      transcript:
+        items:
+          $ref: '#/definitions/handler.TranscriptLine'
+        type: array
+      video_id:
+        type: string
+    type: object
+  handler.VideoDetailsResponse:
+    properties:
+      video:
+        $ref: '#/definitions/handler.VideoSummary'
+    type: object
+  handler.VideoSummary:
+    properties:
+      channel_id:
+        type: string
+      channel_title:
+        type: string
+      description:
+        type: string
+      published_at:
+        type: string
+      thumbnail_url:
+        type: string
+      title:
+        type: string
+      video_id:
+        type: string
+    type: object
+host: localhost:9191
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the API gateway for the TextTube project.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: TextTube Gateway API
+  version: "1.0"
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password and return a token
+      parameters:
+      - description: Login Credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Log in a user
+      tags:
+      - auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new account with username, email, and password
+      parameters:
+      - description: Registration Info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handler.AuthResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
+  /api/profile:
+    get:
+      consumes:
+      - application/json
+      description: Get current user's profile information using token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.ProfileResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get user profile
+      tags:
+      - profile
+  /api/videos/{videoId}:
+    get:
+      consumes:
+      - application/json
+      description: Get detailed information about a specific video
+      parameters:
+      - description: Video ID
+        in: path
+        name: videoId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.VideoDetailsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get video details
+      tags:
+      - videos
+  /api/videos/{videoId}/summarize:
+    get:
+      consumes:
+      - application/json
+      description: Generate a summary for a specific video
+      parameters:
+      - description: Video ID
+        in: path
+        name: videoId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SummarizeResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Summarize a video
+      tags:
+      - videos
+  /api/videos/{videoId}/transcript:
+    get:
+      consumes:
+      - application/json
+      description: Get the transcript of a specific video
+      parameters:
+      - description: Video ID
+        in: path
+        name: videoId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.TranscriptResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get video transcript
+      tags:
+      - videos
+  /api/videos/channel/{channelId}:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of videos from a specific channel ID
+      parameters:
+      - description: Channel ID
+        in: path
+        name: channelId
+        required: true
+        type: string
+      - default: 10
+        description: Max Results
+        in: query
+        name: max_results
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SearchChannelResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get videos from a channel
+      tags:
+      - videos
+  /api/videos/search:
+    get:
+      consumes:
+      - application/json
+      description: Search for a channel by name and return its details and recent
+        videos
+      parameters:
+      - description: Channel Name
+        in: query
+        name: channel
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.SearchChannelResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Search for a YouTube channel
+      tags:
+      - videos
+  /health:
+    get:
+      consumes:
+      - application/json
+      description: get the status of server.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handler.HealthResponse'
+      summary: Show the status of server.
+      tags:
+      - root
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
