@@ -36,15 +36,20 @@ message SearchChannelResponse {
   string channel_description = 3;
   string thumbnail_url = 4;
   repeated VideoInfo videos = 5;
+  string next_page_token = 6;
 }
 
 message GetChannelVideosRequest {
   string channel_id = 1;
   string user_id = 2;
   int32 max_results = 3;
+  string page_token = 4;
 }
 
-message GetChannelVideosResponse { repeated VideoInfo videos = 1; }
+message GetChannelVideosResponse {
+  repeated VideoInfo videos = 1;
+  string next_page_token = 2;
+}
 
 message GetVideoDetailsRequest {
   string video_id = 1;

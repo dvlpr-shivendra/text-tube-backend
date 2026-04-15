@@ -58,6 +58,7 @@ type VideosResponse struct {
 			} `json:"thumbnails"`
 		} `json:"snippet"`
 	} `json:"items"`
+	NextPageToken string `json:"nextPageToken"`
 }
 
 type VideoDetailsResponse struct {
@@ -178,7 +179,7 @@ func (c *YouTubeClient) SearchChannel(channelName string) (*models.Channel, erro
 	}, nil
 }
 
-func (c *YouTubeClient) GetChannelVideos(channelID string, maxResults int) ([]models.Video, error) {
+func (c *YouTubeClient) GetChannelVideos(channelID string, maxResults int, pageToken string) ([]models.Video, string, error) {
 	videosURL := fmt.Sprintf(
 		"https://www.googleapis.com/youtube/v3/search?key=%s&channelId=%s&part=snippet,id&order=date&maxResults=%d&type=video",
 		c.apiKey,
@@ -186,20 +187,24 @@ func (c *YouTubeClient) GetChannelVideos(channelID string, maxResults int) ([]mo
 		maxResults,
 	)
 
+	if pageToken != "" {
+		videosURL += "&pageToken=" + pageToken
+	}
+
 	resp, err := c.httpClient.Get(videosURL)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("YouTube API error: %s - %s", resp.Status, string(body))
+		return nil, "", fmt.Errorf("YouTube API error: %s - %s", resp.Status, string(body))
 	}
 
 	var videosResp VideosResponse
 	if err := json.NewDecoder(resp.Body).Decode(&videosResp); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	videos := make([]models.Video, 0, len(videosResp.Items))
@@ -217,7 +222,7 @@ func (c *YouTubeClient) GetChannelVideos(channelID string, maxResults int) ([]mo
 		}
 	}
 
-	return videos, nil
+	return videos, videosResp.NextPageToken, nil
 }
 
 func (c *YouTubeClient) GetVideoDetails(videoID string) (*models.Video, error) {

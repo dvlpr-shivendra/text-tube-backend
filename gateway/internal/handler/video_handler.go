@@ -42,6 +42,12 @@ type SearchChannelResponse struct {
 	ChannelDescription string         `json:"channel_description"`
 	ThumbnailURL       string         `json:"thumbnail_url"`
 	Videos             []VideoSummary `json:"videos"`
+	NextPageToken      string         `json:"next_page_token"`
+}
+
+type GetChannelVideosResponse struct {
+	Videos        []VideoSummary `json:"videos"`
+	NextPageToken string         `json:"next_page_token"`
 }
 
 type VideoDetailsResponse struct {
@@ -113,7 +119,8 @@ func (h *VideoHandler) SearchChannel(w http.ResponseWriter, r *http.Request) {
 // @Security ApiKeyAuth
 // @Param channelId path string true "Channel ID"
 // @Param max_results query int false "Max Results" default(10)
-// @Success 200 {object} SearchChannelResponse
+// @Param page_token query string false "Page Token"
+// @Success 200 {object} GetChannelVideosResponse
 // @Failure 401 {object} ErrorResponse
 // @Router /api/videos/channel/{channelId} [get]
 func (h *VideoHandler) GetChannelVideos(w http.ResponseWriter, r *http.Request) {
@@ -129,10 +136,13 @@ func (h *VideoHandler) GetChannelVideos(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	pageToken := r.URL.Query().Get("page_token")
+
 	resp, err := h.videoClient.GetChannelVideos(r.Context(), &pb.GetChannelVideosRequest{
 		ChannelId:  channelID,
 		UserId:     userID,
 		MaxResults: maxResults,
+		PageToken:  pageToken,
 	})
 	if err != nil {
 		log.Printf("GetChannelVideos failure: %v", err)

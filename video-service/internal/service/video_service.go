@@ -49,7 +49,7 @@ func (s *VideoService) SearchChannel(ctx context.Context, req *pb.SearchChannelR
 		log.Printf("Cache hit for channel: %s", req.ChannelName)
 		// Get cached videos
 		videos, _ := s.videoRepo.GetCachedVideos(ctx, cachedChannel.ChannelID, s.cacheMaxAge)
-		return s.buildSearchResponse(cachedChannel, videos), nil
+		return s.buildSearchResponse(cachedChannel, videos, ""), nil
 	}
 
 	log.Printf("Cache miss for channel: %s, searching YouTube", req.ChannelName)
@@ -61,7 +61,7 @@ func (s *VideoService) SearchChannel(ctx context.Context, req *pb.SearchChannelR
 	}
 
 	// Get videos
-	videos, err := s.youtubeClient.GetChannelVideos(channel.ChannelID, 10)
+	videos, nextPageToken, err := s.youtubeClient.GetChannelVideos(channel.ChannelID, 10, "")
 	if err != nil {
 		log.Printf("Error getting videos for channel %s: %v", channel.ChannelID, err)
 		return nil, err
@@ -71,38 +71,43 @@ func (s *VideoService) SearchChannel(ctx context.Context, req *pb.SearchChannelR
 	s.videoRepo.CacheChannel(ctx, channel)
 	s.videoRepo.CacheVideos(ctx, videos)
 
-	return s.buildSearchResponse(channel, videos), nil
+	return s.buildSearchResponse(channel, videos, nextPageToken), nil
 }
 
 func (s *VideoService) GetChannelVideos(ctx context.Context, req *pb.GetChannelVideosRequest) (*pb.GetChannelVideosResponse, error) {
-	log.Printf("Getting videos for channel: %s", req.ChannelId)
+	log.Printf("Getting videos for channel: %s, pageToken: %s", req.ChannelId, req.PageToken)
 	maxResults := req.MaxResults
 	if maxResults <= 0 || maxResults > 50 {
 		maxResults = 10
 	}
 
-	// Try cache first
-	cachedVideos, err := s.videoRepo.GetCachedVideos(ctx, req.ChannelId, s.cacheMaxAge)
-	if err == nil && len(cachedVideos) > 0 {
-		log.Printf("Cache hit for videos of channel: %s", req.ChannelId)
-		return &pb.GetChannelVideosResponse{
-			Videos: s.convertVideosToProto(cachedVideos),
-		}, nil
+	// Try cache first (only if no pageToken)
+	if req.PageToken == "" {
+		cachedVideos, err := s.videoRepo.GetCachedVideos(ctx, req.ChannelId, s.cacheMaxAge)
+		if err == nil && len(cachedVideos) > 0 {
+			log.Printf("Cache hit for videos of channel: %s", req.ChannelId)
+			return &pb.GetChannelVideosResponse{
+				Videos: s.convertVideosToProto(cachedVideos),
+			}, nil
+		}
 	}
 
-	log.Printf("Cache miss for videos of channel: %s, fetching from YouTube", req.ChannelId)
+	log.Printf("Fetching videos from YouTube for channel: %s, pageToken: %s", req.ChannelId, req.PageToken)
 	// Fetch from YouTube
-	videos, err := s.youtubeClient.GetChannelVideos(req.ChannelId, int(maxResults))
+	videos, nextPageToken, err := s.youtubeClient.GetChannelVideos(req.ChannelId, int(maxResults), req.PageToken)
 	if err != nil {
 		log.Printf("Error fetching videos for channel %s from YouTube: %v", req.ChannelId, err)
 		return nil, err
 	}
 
-	// Cache videos
-	s.videoRepo.CacheVideos(ctx, videos)
+	// Cache videos (only if it's the first page)
+	if req.PageToken == "" {
+		s.videoRepo.CacheVideos(ctx, videos)
+	}
 
 	return &pb.GetChannelVideosResponse{
-		Videos: s.convertVideosToProto(videos),
+		Videos:        s.convertVideosToProto(videos),
+		NextPageToken: nextPageToken,
 	}, nil
 }
 
@@ -220,13 +225,14 @@ func cleanWhitespace(s string) string {
 	return strings.TrimSpace(s)
 }
 
-func (s *VideoService) buildSearchResponse(channel *models.Channel, videos []models.Video) *pb.SearchChannelResponse {
+func (s *VideoService) buildSearchResponse(channel *models.Channel, videos []models.Video, nextPageToken string) *pb.SearchChannelResponse {
 	return &pb.SearchChannelResponse{
 		ChannelId:          channel.ChannelID,
 		ChannelTitle:       channel.Title,
 		ChannelDescription: channel.Description,
 		ThumbnailUrl:       channel.Thumbnail,
 		Videos:             s.convertVideosToProto(videos),
+		NextPageToken:      nextPageToken,
 	}
 }
 
