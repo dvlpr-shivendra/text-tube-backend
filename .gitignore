@@ -4,6 +4,7 @@ bin/
 *.dll
 *.so
 *.dylib
+tmp
 
 # Test files
 *.test

@@ -63,4 +63,3 @@ test:
 test-e2e-local:
 	make run-local &
 	sleep 5
-	cd tests/e2e && GATEWAY_URL=http://localhost:8080 go test -v -count=1

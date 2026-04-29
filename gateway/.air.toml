@@ -1,0 +1,44 @@
+root = ".."
+testdata_dir = "gateway/testdata"
+tmp_dir = "gateway/tmp"
+
+[build]
+  args_bin = []
+  bin = "./tmp/gateway"
+  cmd = "go build -o ./tmp/gateway ./cmd/main.go"
+  delay = 1000
+  exclude_dir = ["bin", "tests", "mcp-server", "auth-service", "video-service"]
+  exclude_file = []
+  exclude_regex = ["_test.go"]
+  exclude_unchanged = false
+  follow_symlink = false
+  full_bin = ""
+  include_dir = ["gateway", "shared"]
+  include_ext = ["go", "tpl", "tmpl", "html", "proto"]
+  include_file = []
+  kill_delay = "500ms"
+  log = "build-errors.log"
+  poll = false
+  poll_interval = 0
+  rerun = false
+  rerun_delay = 500
+  send_interrupt = true
+  stop_on_error = true
+
+[color]
+  app = ""
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[log]
+  main_only = false
+  time = false
+
+[misc]
+  clean_on_exit = true
+
+[screen]
+  clear_on_rebuild = true
+  keep_scroll = true
