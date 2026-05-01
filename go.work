@@ -1,10 +1,10 @@
-go 1.25.0
+go 1.26.1
 
 use (
 	./auth-service
 	./gateway
+	./mcp-server
 	./shared
 	./tests/e2e
 	./video-service
-	./mcp-server
 )

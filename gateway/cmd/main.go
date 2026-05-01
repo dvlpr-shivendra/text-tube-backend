@@ -7,7 +7,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"context"
+	"time"
 
+	"shared/telemetry"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"github.com/gorilla/mux"
 	_ "gateway/docs" // This is where swag will generate the docs
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -36,6 +40,22 @@ func main() {
 	port := os.Getenv("GATEWAY_PORT")
 	if port == "" {
 		port = "9191"
+	}
+
+	collectorAddr := os.Getenv("OTEL_COLLECTOR_ADDR")
+	if collectorAddr == "" {
+		collectorAddr = "localhost:4317"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Initialize Telemetry
+	shutdown, err := telemetry.InitTelemetry(ctx, "gateway", collectorAddr)
+	if err != nil {
+		log.Printf("Failed to initialize telemetry: %v", err)
+	} else {
+		defer shutdown()
 	}
 
 	authServiceAddr := os.Getenv("AUTH_SERVICE_ADDR")
@@ -101,8 +121,9 @@ func main() {
 	protected.HandleFunc("/videos/{videoId}/transcript", vh.GetVideoTranscript).Methods("GET")
 	protected.HandleFunc("/videos/{videoId}/summarize", vh.SummarizeVideo).Methods("GET")
 
-	// Wrap router with CORS middleware
-	handler := CORSMiddleware(r)
+	// Wrap router with CORS and OpenTelemetry middleware
+	otelHandler := otelhttp.NewHandler(r, "gateway")
+	handler := CORSMiddleware(otelHandler)
 
 	log.Printf("🚀 Gateway starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, handler); err != nil {

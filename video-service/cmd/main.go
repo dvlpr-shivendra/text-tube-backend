@@ -13,9 +13,11 @@ import (
 	"videoservice/internal/repository"
 	"videoservice/internal/service"
 	pb "shared/proto"
+	"shared/telemetry"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 )
 
@@ -23,6 +25,22 @@ func main() {
 	port := os.Getenv("VIDEO_SERVICE_PORT")
 	if port == "" {
 		port = "50052"
+	}
+
+	collectorAddr := os.Getenv("OTEL_COLLECTOR_ADDR")
+	if collectorAddr == "" {
+		collectorAddr = "localhost:4317"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Initialize Telemetry
+	shutdown, err := telemetry.InitTelemetry(ctx, "video-service", collectorAddr)
+	if err != nil {
+		log.Printf("Failed to initialize telemetry: %v", err)
+	} else {
+		defer shutdown()
 	}
 
 	mongoURI := os.Getenv("MONGO_URI")
@@ -39,9 +57,6 @@ func main() {
 	if geminiAPIKey == "" {
 		log.Fatal("GEMINI_API_KEY environment variable is required")
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
 
 	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
 	if err != nil {
@@ -72,7 +87,9 @@ func main() {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
 	pb.RegisterVideoServiceServer(grpcServer, videoService)
 
 	go func() {
