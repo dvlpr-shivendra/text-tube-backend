@@ -17,8 +17,11 @@ import (
 )
 
 // InitTelemetry initializes OpenTelemetry SDK for tracing and metrics.
-func InitTelemetry(ctx context.Context, serviceName string, collectorAddr string) (func(), error) {
-	res, err := resource.New(ctx,
+// The ctx parameter is accepted for API compatibility but is NOT used for
+// long-lived operations; context.Background() is used internally to prevent
+// a short-lived caller context from silently aborting telemetry setup.
+func InitTelemetry(_ context.Context, serviceName string, collectorAddr string) (func(), error) {
+	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
 			semconv.ServiceNameKey.String(serviceName),
 		),

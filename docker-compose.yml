@@ -21,10 +21,13 @@ services:
     environment:
       - AUTH_SERVICE_PORT=50051
       - MONGO_URI=mongodb://mongodb:27017
-      - JWT_SECRET=your-secret-key-change-in-production
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - OTEL_COLLECTOR_ADDR=otel-collector:4317
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_started
+      otel-collector:
+        condition: service_started
     networks:
       - text-tube-network
 
@@ -39,9 +42,13 @@ services:
       - VIDEO_SERVICE_PORT=50052
       - MONGO_URI=mongodb://mongodb:27017
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OTEL_COLLECTOR_ADDR=otel-collector:4317
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_started
+      otel-collector:
+        condition: service_started
     networks:
       - text-tube-network
 
@@ -58,8 +65,12 @@ services:
       - VIDEO_SERVICE_ADDR=video-service:50052
       - OTEL_COLLECTOR_ADDR=otel-collector:4317
     depends_on:
-      - auth-service
-      - video-service
+      auth-service:
+        condition: service_started
+      video-service:
+        condition: service_started
+      otel-collector:
+        condition: service_started
     networks:
       - text-tube-network
 
@@ -67,8 +78,9 @@ services:
     image: jaegertracing/all-in-one:latest
     container_name: text-tube-jaeger
     ports:
-      - "16686:16686" # UI
+      - "16686:16686" # Jaeger UI
       - "14268:14268" # Jaeger collector (HTTP)
+      - "4319:4317"   # OTLP gRPC exposed to host (offset to avoid conflict with otel-collector)
     networks:
       - text-tube-network
 
@@ -78,10 +90,14 @@ services:
     command: ["--config=/etc/otel-config.yaml"]
     volumes:
       - ./observability/otel-config.yaml:/etc/otel-config.yaml
+      # Bind-mount host root filesystem so hostmetrics reads real host stats.
+      # The root_path in otel-config.yaml points to /hostfs.
+      - /:/hostfs:ro
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
-      - "8889:8889" # Prometheus exporter
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus metrics exporter
+      - "13133:13133" # Health check endpoint
     depends_on:
       - jaeger
     networks:
@@ -92,10 +108,12 @@ services:
     container_name: text-tube-prometheus
     volumes:
       - ./observability/prometheus.yaml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     depends_on:
-      - otel-collector
+      otel-collector:
+        condition: service_started
     networks:
       - text-tube-network
 
@@ -105,10 +123,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - ./observability/grafana/provisioning:/etc/grafana/provisioning
+      # Named volume preserves dashboards, alert rules, and user state across restarts.
+      - grafana-data:/var/lib/grafana
     depends_on:
       - prometheus
     networks:
@@ -116,6 +136,8 @@ services:
 
 volumes:
   mongo-data:
+  prometheus-data:
+  grafana-data:
 
 networks:
   text-tube-network:

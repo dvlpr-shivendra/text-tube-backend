@@ -29,7 +29,7 @@ import (
 // @license.name Apache 2.0
 // @license.url http://www.apache.org/licenses/LICENSE-2.0.html
 
-// @host localhost:9191
+// @host localhost:8080
 // @BasePath /
 // @query.collection.format multi
 
@@ -39,7 +39,7 @@ import (
 func main() {
 	port := os.Getenv("GATEWAY_PORT")
 	if port == "" {
-		port = "9191"
+		port = "8080"
 	}
 
 	collectorAddr := os.Getenv("OTEL_COLLECTOR_ADDR")

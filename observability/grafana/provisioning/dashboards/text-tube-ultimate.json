@@ -429,7 +429,7 @@
       "id": 301,
       "targets": [
         {
-          "expr": "text_tube_process_runtime_go_goroutines{job=~\"$job\"}",
+          "expr": "text_tube_go_goroutine_count{job=~\"$job\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -456,7 +456,7 @@
       "id": 302,
       "targets": [
         {
-          "expr": "text_tube_process_runtime_go_mem_heap_alloc_bytes{job=~\"$job\"}",
+          "expr": "text_tube_go_memory_used_bytes{job=~\"$job\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -478,7 +478,7 @@
       "id": 303,
       "targets": [
         {
-          "expr": "text_tube_process_runtime_go_gc_count_total{job=~\"$job\"}",
+          "expr": "rate(text_tube_go_gc_duration_seconds_count{job=~\"$job\"}[5m])",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -507,14 +507,14 @@
           "type": "prometheus",
           "uid": "Prometheus"
         },
-        "definition": "label_values(text_tube_http_server_request_duration_seconds_count, job)",
+        "definition": "label_values(text_tube_go_goroutine_count, job)",
         "hide": 0,
         "includeAll": true,
         "multi": true,
         "name": "job",
         "options": [],
         "query": {
-          "query": "label_values(text_tube_http_server_request_duration_seconds_count, job)",
+          "query": "label_values(text_tube_go_goroutine_count, job)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -530,6 +530,6 @@
     "to": "now"
   },
   "title": "TextTube - System Health & Traffic",
-  "uid": "text_tube_v3_final",
+  "uid": "text_tube_v4_prod",
   "version": 1
 }

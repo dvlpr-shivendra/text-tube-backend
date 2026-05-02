@@ -1,3 +1,8 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: "/"
+
 receivers:
   otlp:
     protocols:
@@ -5,7 +10,10 @@ receivers:
         endpoint: 0.0.0.0:4317
       http:
         endpoint: 0.0.0.0:4318
-  hostmetrics:
+  host_metrics:
+    # root_path maps the container's /hostfs mount to the host filesystem,
+    # so metrics reflect real host CPU/memory rather than container-level stats.
+    root_path: /hostfs
     collection_interval: 10s
     scrapers:
       cpu:
@@ -21,20 +29,19 @@ exporters:
     endpoint: "0.0.0.0:8889"
     send_timestamps: true
     namespace: text_tube
-  otlp/jaeger:
+  otlp_grpc/jaeger:
     endpoint: jaeger:4317
     tls:
       insecure: true
-  debug:
-    verbosity: detailed
 
 service:
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlp/jaeger, debug]
+      exporters: [otlp_grpc/jaeger]
     metrics:
-      receivers: [otlp, hostmetrics]
+      receivers: [otlp, host_metrics]
       processors: [batch]
-      exporters: [prometheus, debug]
+      exporters: [prometheus]
