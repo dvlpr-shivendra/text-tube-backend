@@ -18,7 +18,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
-  "id": 1,
+  "id": null,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -422,7 +422,7 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 8,
+        "w": 12,
         "x": 0,
         "y": 24
       },
@@ -449,8 +449,8 @@
       },
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 8,
+        "w": 12,
+        "x": 12,
         "y": 24
       },
       "id": 302,
@@ -462,28 +462,6 @@
         }
       ],
       "title": "Process Memory Used",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "Prometheus"
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 8,
-        "x": 16,
-        "y": 24
-      },
-      "id": 303,
-      "targets": [
-        {
-          "expr": "rate(text_tube_go_gc_duration_seconds_count{job=~\"$job\"}[5m])",
-          "legendFormat": "{{job}}",
-          "refId": "A"
-        }
-      ],
-      "title": "GC Count",
       "type": "timeseries"
     }
   ],
@@ -530,6 +508,6 @@
     "to": "now"
   },
   "title": "TextTube - System Health & Traffic",
-  "uid": "text_tube_v4_prod",
+  "uid": "text_tube",
   "version": 1
 }
